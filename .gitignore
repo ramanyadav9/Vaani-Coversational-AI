@@ -2,9 +2,10 @@
 .claude/
 !.claude/README.md
 
-# Markdown files (except README)
+# Markdown files (except README and DEPLOYMENT)
 *.md
 !README.md
+!DEPLOYMENT.md
 
 # Dependencies
 node_modules/
