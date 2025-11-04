@@ -1,0 +1,432 @@
+{
+  "scan_timestamp": "2025-11-03T19:37:33.697Z",
+  "total_agents": 30,
+  "total_unique_variables": 5,
+  "variable_usage_stats": {
+    "session_configcustomer_name": 4,
+    "customer_infoemi_amount": 1,
+    "customer_infoloan_id": 1,
+    "customer_infodue_date": 1,
+    "opening_message": 4
+  },
+  "agents": [
+    {
+      "agent_id": "agent_2201k8sx9vs3efp9x0re7mj2mr6s",
+      "agent_name": "Vasundhara",
+      "category": "General",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_9301k7ve01z6fehtgpvtg150j6kp",
+      "agent_name": "EMI REMINDER ASSISTANT",
+      "category": "Banking",
+      "variables": {
+        "session_configcustomer_name": {
+          "source": [
+            "system_prompt"
+          ],
+          "category": "user_info",
+          "required": false,
+          "userInput": true,
+          "fieldType": "text",
+          "label": "Session Configcustomer Name",
+          "placeholder": "Enter name"
+        },
+        "customer_infoemi_amount": {
+          "source": [
+            "system_prompt"
+          ],
+          "category": "custom",
+          "required": false,
+          "userInput": true,
+          "fieldType": "number",
+          "label": "Customer Infoemi Amount",
+          "placeholder": "Enter customer infoemi amount"
+        },
+        "customer_infoloan_id": {
+          "source": [
+            "system_prompt"
+          ],
+          "category": "custom",
+          "required": false,
+          "userInput": true,
+          "fieldType": "text",
+          "label": "Customer Infoloan Id",
+          "placeholder": "Enter ID"
+        },
+        "customer_infodue_date": {
+          "source": [
+            "system_prompt"
+          ],
+          "category": "custom",
+          "required": false,
+          "userInput": true,
+          "fieldType": "text",
+          "label": "Customer Infodue Date",
+          "placeholder": "Enter customer infodue date"
+        },
+        "opening_message": {
+          "source": [
+            "first_message"
+          ],
+          "category": "custom",
+          "required": true,
+          "userInput": true,
+          "fieldType": "textarea",
+          "label": "Opening Message",
+          "placeholder": "Enter message"
+        }
+      },
+      "variable_count": 5,
+      "required_variables": [
+        "opening_message"
+      ],
+      "user_input_variables": [
+        "session_configcustomer_name",
+        "customer_infoemi_amount",
+        "customer_infoloan_id",
+        "customer_infodue_date",
+        "opening_message"
+      ]
+    },
+    {
+      "agent_id": "agent_3801k7vdnsh6fs1v54p9r7cr2cbq",
+      "agent_name": "LOAN ENQUIRY ASSISTANT",
+      "category": "Banking",
+      "variables": {
+        "session_configcustomer_name": {
+          "source": [
+            "system_prompt"
+          ],
+          "category": "user_info",
+          "required": false,
+          "userInput": true,
+          "fieldType": "text",
+          "label": "Session Configcustomer Name",
+          "placeholder": "Enter name"
+        },
+        "opening_message": {
+          "source": [
+            "first_message"
+          ],
+          "category": "custom",
+          "required": true,
+          "userInput": true,
+          "fieldType": "textarea",
+          "label": "Opening Message",
+          "placeholder": "Enter message"
+        }
+      },
+      "variable_count": 2,
+      "required_variables": [
+        "opening_message"
+      ],
+      "user_input_variables": [
+        "session_configcustomer_name",
+        "opening_message"
+      ]
+    },
+    {
+      "agent_id": "agent_1401k7vddx6yfwwregvm73bvjrmb",
+      "agent_name": "NEW ACCOUNT OPENING ASSISTANT",
+      "category": "General",
+      "variables": {
+        "session_configcustomer_name": {
+          "source": [
+            "system_prompt"
+          ],
+          "category": "user_info",
+          "required": false,
+          "userInput": true,
+          "fieldType": "text",
+          "label": "Session Configcustomer Name",
+          "placeholder": "Enter name"
+        },
+        "opening_message": {
+          "source": [
+            "first_message"
+          ],
+          "category": "custom",
+          "required": true,
+          "userInput": true,
+          "fieldType": "textarea",
+          "label": "Opening Message",
+          "placeholder": "Enter message"
+        }
+      },
+      "variable_count": 2,
+      "required_variables": [
+        "opening_message"
+      ],
+      "user_input_variables": [
+        "session_configcustomer_name",
+        "opening_message"
+      ]
+    },
+    {
+      "agent_id": "agent_5001k7vc1qrnf5qawzqxq2w65kcm",
+      "agent_name": "BANK ENQUIRY ASSISTANT",
+      "category": "Banking",
+      "variables": {
+        "session_configcustomer_name": {
+          "source": [
+            "system_prompt"
+          ],
+          "category": "user_info",
+          "required": false,
+          "userInput": true,
+          "fieldType": "text",
+          "label": "Session Configcustomer Name",
+          "placeholder": "Enter name"
+        },
+        "opening_message": {
+          "source": [
+            "first_message"
+          ],
+          "category": "custom",
+          "required": true,
+          "userInput": true,
+          "fieldType": "textarea",
+          "label": "Opening Message",
+          "placeholder": "Enter message"
+        }
+      },
+      "variable_count": 2,
+      "required_variables": [
+        "opening_message"
+      ],
+      "user_input_variables": [
+        "session_configcustomer_name",
+        "opening_message"
+      ]
+    },
+    {
+      "agent_id": "agent_5101k7v2gaekf2arq3x4tn5ywq0s",
+      "agent_name": "Real Estate agent_british_female",
+      "category": "Real Estate",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_1401k7v2fz75fsa8pafjqm36dvzb",
+      "agent_name": "Real Estate agent_british",
+      "category": "Real Estate",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_0301k7v2fdz9fksrwa2fjxw2xvpq",
+      "agent_name": "Hospitality agent_british_female",
+      "category": "Hospitality",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_0801k7v2f3p5fd2b6avcp8j0r72k",
+      "agent_name": "Hospitality agent_british",
+      "category": "Hospitality",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_4201k7v2emcaex7radmgb41vbxr1",
+      "agent_name": "Traffic e-challan Agent_british_female",
+      "category": "Traffic",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_1301k7v2eavpe5xvq7h53s2h2xe7",
+      "agent_name": "Traffic e-challan Agent_british",
+      "category": "Traffic",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_9601k7v2derhegw8q1rny1dz17w1",
+      "agent_name": "NMC Agent_british_female",
+      "category": "Municipal",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_9901k7v2caqpf7yv5wf2ch2c4m7g",
+      "agent_name": "NMC Agent_british",
+      "category": "Municipal",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_7501k7v2brsqeybs8tr024d1hw33",
+      "agent_name": "Doctor Appointment Agent_british_female",
+      "category": "Healthcare",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_6001k7v2atdgetrtfx48cjgqcdd6",
+      "agent_name": "Doctor Appointment Agent_british",
+      "category": "Healthcare",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_8701k7v2a8vwf1etyhr64bedws4t",
+      "agent_name": "Doctor Appointment Agent_hindi_female",
+      "category": "Healthcare",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_6101k7v29r8teqjtyqbq729ypfxw",
+      "agent_name": "Doctor Appointment Agent_english_female",
+      "category": "Healthcare",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_9901k7v294g2fb0b2wh4a42vv8sn",
+      "agent_name": "Doctor Appointment Agent_hindi",
+      "category": "Healthcare",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_7301k7v27egwf5xax0msv1xbyxbd",
+      "agent_name": "NMC Agent_hindi_female",
+      "category": "Municipal",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_4901k7v26tzpf4bvjvx2a2y4s7wy",
+      "agent_name": "NMC Agent_english_female",
+      "category": "Municipal",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_4001k7v26bfef6esjkf0jgz9kbav",
+      "agent_name": "NMC Agent_hindi",
+      "category": "Municipal",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_6501k7v24x75fw2sng2jr209h5ke",
+      "agent_name": "Traffic e-challan Agent_hindi_female",
+      "category": "Traffic",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_4101k7v24dq9ffbs1w5sjdfjh975",
+      "agent_name": "Traffic e-challan Agent_english_female",
+      "category": "Traffic",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_9401k7v23v6pf08r316fd897y9xx",
+      "agent_name": "Traffic e-challan Agent_hindi",
+      "category": "Traffic",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_8101k7v21ecffr59bp68ydfj7txh",
+      "agent_name": "Hospitality agent_hindi",
+      "category": "Hospitality",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_6501k7v200h5edm9dj64atbzs56c",
+      "agent_name": "Hospitality agent_hindi_female",
+      "category": "Hospitality",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_0801k7v1zmg2ey9rk4rpev4ngm96",
+      "agent_name": "Hospitality agent_english_female",
+      "category": "Hospitality",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_7001k7v1z09keabs1jb4zwpbz27n",
+      "agent_name": "Hospitality agent_hindi",
+      "category": "Hospitality",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_3901k7v1yawmefvtwydc7sjz0jfn",
+      "agent_name": "Real Estate agent_hindi_female",
+      "category": "Real Estate",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    },
+    {
+      "agent_id": "agent_1101k7v1xwfgehvr2apax84b5hcd",
+      "agent_name": "Real Estate agent_english_female",
+      "category": "Real Estate",
+      "variables": {},
+      "variable_count": 0,
+      "required_variables": [],
+      "user_input_variables": []
+    }
+  ]
+}
