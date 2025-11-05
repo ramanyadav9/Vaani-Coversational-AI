@@ -1,45 +1,63 @@
 import { motion } from 'framer-motion';
-import { Phone, Clock, RefreshCw } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Phone, Clock, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { GlassCard } from '../components/ui/GlassCard';
-import { liveCallsService } from '../services/api';
+import { useLiveCalls } from '../contexts/LiveCallsContext';
 import { formatDuration, maskPhoneNumber } from '../lib/utils';
 import type { LiveCall } from '../types';
 
 export function LiveTab() {
-  const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch live calls from backend
-  const { data: liveCalls = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['liveCalls'],
-    queryFn: liveCallsService.getLiveCalls,
-    refetchInterval: 1000, // Refresh every 1 second for real-time updates
-    refetchOnWindowFocus: true, // Refetch when tab gets focus
-  });
+  // Use global WebSocket connection - always connected, instant data!
+  const { liveCalls, isConnected, isLoading, error, refresh } = useLiveCalls();
 
-  const handleManualRefresh = async () => {
+  const handleManualRefresh = () => {
     setIsRefreshing(true);
-    await refetch();
-    setIsRefreshing(false);
-    toast.success('Call list refreshed');
+    refresh();
+    // Reset refreshing state after a short delay
+    setTimeout(() => {
+      setIsRefreshing(false);
+      if (isConnected) {
+        toast.success('Call list refreshed');
+      }
+    }, 500);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header with Refresh Button */}
+      {/* Header with Connection Status & Refresh Button */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Active Calls</h2>
+          <div className="flex items-center gap-3 mb-2">
+            <h2 className="text-3xl font-bold text-white">Active Calls</h2>
+            {/* WebSocket Connection Indicator */}
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+              isConnected
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-red-500/20 text-red-400 border border-red-500/30'
+            }`}>
+              {isConnected ? (
+                <>
+                  <Wifi className="w-3 h-3" />
+                  <span>Live</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3 h-3" />
+                  <span>Offline</span>
+                </>
+              )}
+            </div>
+          </div>
           <p className="text-white/60">
-            Monitor and manage ongoing conversations in real-time
+            Monitor and manage ongoing conversations in real-time via WebSocket
           </p>
         </div>
         <button
           onClick={handleManualRefresh}
-          disabled={isRefreshing}
+          disabled={isRefreshing || !isConnected}
           className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium
                      transition-all duration-200 flex items-center gap-2 disabled:opacity-50
                      disabled:cursor-not-allowed"
@@ -50,10 +68,14 @@ export function LiveTab() {
         </button>
       </div>
 
-      {/* Error Message */}
+      {/* Error/Connection Message */}
       {error && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
-          Failed to load active calls. {error instanceof Error ? error.message : 'Unknown error'}
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-3">
+          <WifiOff className="w-5 h-5 flex-shrink-0" />
+          <div>
+            <div className="font-medium">Connection Issue</div>
+            <div className="text-sm text-red-400/80">{error}</div>
+          </div>
         </div>
       )}
 

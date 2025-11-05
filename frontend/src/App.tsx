@@ -5,6 +5,7 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { AnalyticsStrip } from './components/layout/AnalyticsStrip';
 import { SearchProvider } from './contexts/SearchContext';
+import { LiveCallsProvider } from './contexts/LiveCallsContext';
 import type { TabType } from './types';
 import './index.css';
 
@@ -32,9 +33,10 @@ function App() {
 
   return (
     <SearchProvider>
-      <div className="min-h-screen cosmic-bg text-white">
-        {/* Toast Notifications */}
-        <Toaster theme="dark" position="top-right" richColors />
+      <LiveCallsProvider>
+        <div className="min-h-screen cosmic-bg text-white">
+          {/* Toast Notifications */}
+          <Toaster theme="dark" position="top-right" richColors />
 
         {/* Header */}
         <Header />
@@ -69,6 +71,7 @@ function App() {
         {/* Analytics Strip - positioned fixed at bottom */}
         <AnalyticsStrip />
       </div>
+      </LiveCallsProvider>
     </SearchProvider>
   );
 }

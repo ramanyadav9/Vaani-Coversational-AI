@@ -1,30 +1,31 @@
 import { motion } from 'framer-motion';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgentCard } from '../components/agents/AgentCard';
 import { CallSheet } from '../components/calls/CallSheet';
+import { Pagination } from '../components/common/Pagination';
 import type { Agent } from '../types';
-import { agentService, liveCallsService } from '../services/api';
+import { agentService } from '../services/api';
 import { useSearch } from '../contexts/SearchContext';
+import { useLiveCalls } from '../contexts/LiveCallsContext';
 
 export function AgentsTab() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | undefined>();
   const [isCallSheetOpen, setIsCallSheetOpen] = useState(false);
   const { searchQuery } = useSearch();
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12); // 12 fits nicely in 3-column grid
+
   // Fetch agents from backend
   const { data: agents, isLoading, error } = useQuery({
     queryKey: ['agents'],
-    queryFn: agentService.getAgents,
+    queryFn: () => agentService.getAgents(), // Call with no params to get all agents
   });
 
-  // Poll for live calls to track which agents are currently on calls
-  const { data: liveCalls = [] } = useQuery({
-    queryKey: ['liveCalls'],
-    queryFn: liveCallsService.getLiveCalls,
-    refetchInterval: 1000, // Poll every 1 second
-    refetchOnWindowFocus: true,
-  });
+  // Use global WebSocket connection for real-time live calls
+  const { liveCalls } = useLiveCalls();
 
   // Create a map of agent IDs to active calls
   const agentCallMap = useMemo(() => {
@@ -51,6 +52,28 @@ export function AgentsTab() {
       agent.name.toLowerCase().includes(query)
     );
   }, [agents, searchQuery]);
+
+  // Calculate paginated agents
+  const paginatedAgents = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredAgents.slice(startIndex, endIndex);
+  }, [filteredAgents, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // Handle items per page change with page adjustment
+  const handleItemsPerPageChange = (newSize: number) => {
+    setItemsPerPage(newSize);
+    // Adjust current page to keep viewing similar content
+    const newTotalPages = Math.ceil(filteredAgents.length / newSize);
+    if (currentPage > newTotalPages) {
+      setCurrentPage(newTotalPages || 1);
+    }
+  };
 
   const handleInitiateCall = (agent: Agent) => {
     setSelectedAgent(agent);
@@ -85,33 +108,48 @@ export function AgentsTab() {
 
       {/* Agents Grid */}
       {!isLoading && agents && (
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr"
-          layout
-        >
-          {filteredAgents.length > 0 ? (
-            filteredAgents.map((agent, index) => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                hasActiveCall={agentCallMap.get(agent.id) || false}
-                onCall={handleInitiateCall}
-                index={index}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-white/60 text-lg">
-                {searchQuery ? 'No agents match your search' : 'No agents found'}
-              </p>
-              <p className="text-white/40 text-sm mt-2">
-                {searchQuery
-                  ? 'Try a different search term'
-                  : 'Create an agent to get started'}
-              </p>
-            </div>
+        <>
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr"
+            layout
+          >
+            {filteredAgents.length > 0 ? (
+              paginatedAgents.map((agent, index) => (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  hasActiveCall={agentCallMap.get(agent.id) || false}
+                  onCall={handleInitiateCall}
+                  index={index}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-white/60 text-lg">
+                  {searchQuery ? 'No agents match your search' : 'No agents found'}
+                </p>
+                <p className="text-white/40 text-sm mt-2">
+                  {searchQuery
+                    ? 'Try a different search term'
+                    : 'Create an agent to get started'}
+                </p>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Pagination */}
+          {filteredAgents.length > itemsPerPage && (
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredAgents.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              pageSizeOptions={[12, 24, 48, 96]}
+              itemLabel="agents"
+            />
           )}
-        </motion.div>
+        </>
       )}
 
       {/* Call Sheet */}

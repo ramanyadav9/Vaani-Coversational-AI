@@ -3,15 +3,22 @@ import type { CallAnalytics } from '../types';
 import { conversationService, agentService } from '../services/api';
 
 export function useCallAnalytics() {
-  // Fetch conversations and agents
+  // Fetch data with aggressive caching to use existing queries when available
+  // staleTime keeps the data fresh, refetchOnMount: false prevents redundant fetches
   const { data: conversations = [] } = useQuery({
-    queryKey: ['conversations'],
-    queryFn: conversationService.getConversations,
+    queryKey: ['conversations', 'today'], // Match HistoryTab's initial query key
+    queryFn: () => conversationService.getConversations('today'),
+    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
+    refetchOnMount: false, // Don't refetch if data exists and is fresh
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
 
   const { data: agents = [] } = useQuery({
     queryKey: ['agents'],
-    queryFn: agentService.getAgents,
+    queryFn: () => agentService.getAgents(),
+    staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
+    refetchOnMount: false, // Don't refetch if data exists and is fresh
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
 
   // Calculate analytics from real data

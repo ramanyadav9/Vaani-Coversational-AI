@@ -200,6 +200,74 @@ function generateAgentDescription(agentName, category) {
 }
 
 export const elevenLabsService = {
+  // Helper function for cursor-based pagination through ElevenLabs API
+  async fetchAllWithPagination(endpoint, itemKey = null) {
+    let allItems = [];
+    let cursor = null;
+    const pageSize = 100;
+    let pageNumber = 1;
+
+    try {
+      while (true) {
+        // Build query parameters
+        const params = { page_size: pageSize };
+        if (cursor) {
+          params.cursor = cursor;
+        }
+
+        console.log(`[PAGINATION] Fetching page ${pageNumber} from ${endpoint}...`);
+
+        // Make API request
+        const response = await axios.get(
+          `${config.elevenLabs.baseUrl}${endpoint}`,
+          { headers, params }
+        );
+
+        if (response.status !== 200) {
+          console.error(`[PAGINATION] Non-200 status: ${response.status}`);
+          break;
+        }
+
+        const pageData = response.data;
+
+        // Extract items - try different possible keys
+        let items = [];
+        if (itemKey) {
+          items = pageData[itemKey] || [];
+        } else {
+          // Auto-detect item array
+          items = pageData.agents || pageData.conversations || pageData.items || [];
+        }
+
+        console.log(`[PAGINATION] Page ${pageNumber}: received ${items.length} items (total so far: ${allItems.length + items.length})`);
+
+        // Accumulate results
+        allItems = allItems.concat(items);
+
+        // Check pagination metadata
+        const hasMore = pageData.has_more || false;
+        cursor = pageData.next_cursor || null;
+
+        // Break if no more pages
+        if (!hasMore || !cursor) {
+          console.log(`[PAGINATION] Completed: fetched ${allItems.length} total items across ${pageNumber} page(s)`);
+          break;
+        }
+
+        pageNumber++;
+      }
+
+      return allItems;
+    } catch (error) {
+      console.error(`[PAGINATION] Error during pagination at page ${pageNumber}:`, error.message);
+      // Return what we have so far instead of failing completely
+      if (allItems.length > 0) {
+        console.log(`[PAGINATION] Returning ${allItems.length} items collected before error`);
+      }
+      throw error; // Re-throw to be handled by caller
+    }
+  },
+
   // Get voice details from ElevenLabs API
   async getVoiceDetails(voiceId) {
     try {
@@ -254,13 +322,12 @@ export const elevenLabsService = {
   // Get all agents with categories and enhanced details
   async getAgents() {
     try {
-      const response = await axios.get(
-        `${config.elevenLabs.baseUrl}/v1/convai/agents`,
-        { headers }
-      );
+      console.log('\n[AGENT ANALYSIS] Starting agent fetch with pagination...');
 
-      const agents = response.data.agents || [];
-      console.log(`\n[AGENT ANALYSIS] Found ${agents.length} agents from ElevenLabs`);
+      // Fetch all agents using pagination
+      const agents = await this.fetchAllWithPagination('/v1/convai/agents', 'agents');
+
+      console.log(`\n[AGENT ANALYSIS] Found ${agents.length} total agents from ElevenLabs`);
 
       // Add enhanced details to agents
       const enhancedAgents = await Promise.all(agents.map(async agent => {
@@ -348,7 +415,7 @@ export const elevenLabsService = {
   },
 
   // Initiate outbound call
-  async initiateCall(agentId, toNumber) {
+  async initiateCall(agentId, toNumber, sessionConfig = null) {
     try {
       console.log(`[PHONE FORMAT DEBUG] Original input: "${toNumber}"`);
 
@@ -401,13 +468,44 @@ export const elevenLabsService = {
         to_number: formattedNumber,
       };
 
-      console.log('Initiating call with payload:', payload);
+      // Add session configuration if provided
+      if (sessionConfig) {
+        console.log('[SESSION CONFIG] Adding conversation initiation client data:', JSON.stringify(sessionConfig, null, 2));
+
+        payload.conversation_initiation_client_data = {
+          dynamic_variables: sessionConfig.dynamicVariables || {},
+        };
+
+        // Add user_id if provided
+        if (sessionConfig.userId) {
+          payload.conversation_initiation_client_data.user_id = sessionConfig.userId;
+        }
+
+        // Add agent overrides (language) if specified
+        if (sessionConfig.agentOverrides) {
+          payload.conversation_initiation_client_data.agent = sessionConfig.agentOverrides;
+          console.log('[SESSION CONFIG] Added agent overrides:', sessionConfig.agentOverrides);
+        }
+
+        // NOTE: Voice override removed - each agent uses its configured voice
+        console.log('[SESSION CONFIG] Using agent default voice (no TTS override)');
+      }
+
+      console.log('\n=== ELEVENLABS API REQUEST ===');
+      console.log('Endpoint: POST /v1/convai/sip-trunk/outbound-call');
+      console.log('Payload:', JSON.stringify(payload, null, 2));
+      console.log('==============================\n');
 
       const response = await axios.post(
         `${config.elevenLabs.baseUrl}/v1/convai/sip-trunk/outbound-call`,
         payload,
         { headers }
       );
+
+      console.log('\n=== ELEVENLABS API RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Data:', JSON.stringify(response.data, null, 2));
+      console.log('================================\n');
 
       return {
         success: true,
@@ -427,12 +525,14 @@ export const elevenLabsService = {
   // Get conversation history
   async getConversations() {
     try {
-      const response = await axios.get(
-        `${config.elevenLabs.baseUrl}/v1/convai/conversations`,
-        { headers }
-      );
+      console.log('\n[CONVERSATIONS] Starting conversation fetch with pagination...');
 
-      return { success: true, conversations: response.data.conversations || [] };
+      // Fetch all conversations using pagination
+      const conversations = await this.fetchAllWithPagination('/v1/convai/conversations', 'conversations');
+
+      console.log(`[CONVERSATIONS] Successfully fetched ${conversations.length} total conversations\n`);
+
+      return { success: true, conversations };
     } catch (error) {
       console.error('Error fetching conversations:', error.message);
       return {

@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import { ConversationCard } from '../components/history/ConversationCard';
 import { HistoryFilters } from '../components/history/HistoryFilters';
+import { Pagination } from '../components/common/Pagination';
 import type { DateFilterType } from '../components/history/HistoryFilters';
 import { conversationService } from '../services/api';
 import { isToday, isYesterday, isWithinLastDays } from '../lib/utils';
@@ -12,13 +15,28 @@ export function HistoryTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgent, setSelectedAgent] = useState('all');
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch conversations from backend
-  const { data: conversations, isLoading, error } = useQuery({
-    queryKey: ['conversations'],
-    queryFn: conversationService.getConversations,
-    refetchInterval: 3000, // Refresh every 3 seconds for faster status updates
-    refetchOnWindowFocus: true, // Refetch when tab gets focus
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // State for initial load optimization
+  const [loadAllConversations, setLoadAllConversations] = useState(false);
+
+  // Fetch conversations from backend - smart lazy loading
+  // Initially load TODAY only for fast initial render
+  // Load all when user requests via date filter or "Load All" button
+  const shouldLoadAll = loadAllConversations || dateFilter === 'all' || dateFilter === 'last7days' || dateFilter === 'last30days';
+  const apiDateFilter = shouldLoadAll ? undefined : (dateFilter !== 'all' ? dateFilter : 'today');
+
+  const { data: conversations, isLoading, error, refetch } = useQuery({
+    queryKey: ['conversations', apiDateFilter || 'today'], // Normalize undefined to 'today' for cache key consistency
+    queryFn: () => conversationService.getConversations(apiDateFilter),
+    // No auto-refresh for history - it's past data that doesn't change frequently
+    // Users can manually refresh if needed
+    refetchOnWindowFocus: false,
+    staleTime: 60000, // Consider data fresh for 1 minute
   });
 
   // Extract unique agent names for filter dropdown
@@ -73,6 +91,28 @@ export function HistoryTab() {
     });
   }, [conversations, searchQuery, selectedAgent, dateFilter]);
 
+  // Calculate paginated conversations
+  const paginatedConversations = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredConversations.slice(startIndex, endIndex);
+  }, [filteredConversations, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedAgent, dateFilter]);
+
+  // Handle items per page change with page adjustment
+  const handleItemsPerPageChange = (newSize: number) => {
+    setItemsPerPage(newSize);
+    // Adjust current page to keep viewing similar content
+    const newTotalPages = Math.ceil(filteredConversations.length / newSize);
+    if (currentPage > newTotalPages) {
+      setCurrentPage(newTotalPages || 1);
+    }
+  };
+
   // Check if any filters are active
   const hasActiveFilters = searchQuery !== '' || selectedAgent !== 'all' || dateFilter !== 'all';
 
@@ -83,14 +123,54 @@ export function HistoryTab() {
     setDateFilter('all');
   };
 
+  // Manual refresh handler
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+    toast.success('History refreshed');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold text-white mb-2">Call History</h2>
-        <p className="text-white/60">
-          Review past conversations and transcripts
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2">Call History</h2>
+          <p className="text-white/60">
+            {!loadAllConversations && dateFilter === 'all'
+              ? "Showing today's conversations only (for fast loading)"
+              : "Review past conversations and transcripts"}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Load All Button - shown only when showing today by default */}
+          {!loadAllConversations && dateFilter === 'all' && (
+            <button
+              onClick={() => setLoadAllConversations(true)}
+              disabled={isLoading}
+              className="px-4 py-2 rounded-xl bg-galaxy-600/20 hover:bg-galaxy-600/30 border border-galaxy-500/30 text-galaxy-400 font-medium
+                         transition-all duration-200 flex items-center gap-2 disabled:opacity-50
+                         disabled:cursor-not-allowed"
+              aria-label="Load all conversations"
+            >
+              <span>Load All History</span>
+            </button>
+          )}
+
+          {/* Refresh Button */}
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing || isLoading}
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium
+                       transition-all duration-200 flex items-center gap-2 disabled:opacity-50
+                       disabled:cursor-not-allowed"
+            aria-label="Refresh history"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -126,7 +206,17 @@ export function HistoryTab() {
 
       {/* Conversations List */}
       {!isLoading && conversations && (
-        <div className="space-y-4">
+        <div className="relative space-y-4">
+          {/* Refreshing Overlay */}
+          {isRefreshing && (
+            <div className="absolute inset-0 z-10 bg-slate-950/60 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <RefreshCw className="w-8 h-8 text-galaxy-400 animate-spin" />
+                <p className="text-white font-medium">Refreshing history...</p>
+              </div>
+            </div>
+          )}
+
           {filteredConversations.length > 0 ? (
             <>
               {/* Results count */}
@@ -137,14 +227,27 @@ export function HistoryTab() {
                 </div>
               )}
 
-              {/* Filtered conversations */}
-              {filteredConversations.map((conversation, index) => (
+              {/* Paginated conversations */}
+              {paginatedConversations.map((conversation, index) => (
                 <ConversationCard
                   key={conversation.id}
                   conversation={conversation}
                   index={index}
                 />
               ))}
+
+              {/* Pagination */}
+              {filteredConversations.length > itemsPerPage && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalItems={filteredConversations.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  itemLabel="conversations"
+                />
+              )}
             </>
           ) : conversations.length > 0 ? (
             // No results after filtering

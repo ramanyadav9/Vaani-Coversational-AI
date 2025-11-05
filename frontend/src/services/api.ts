@@ -41,16 +41,29 @@ function transformAgent(backendAgent: BackendAgent, totalCalls: number = 0, succ
 }
 
 export const agentService = {
-  async getAgents(): Promise<Agent[]> {
+  async getAgents(limit?: number, page?: number): Promise<Agent[]> {
     try {
-      // Fetch both agents and conversations in parallel
-      const [agentsResponse, conversationsResponse] = await Promise.all([
-        api.get<{ agents: BackendAgent[] }>('/agents'),
-        api.get<{ conversations: BackendConversation[] }>('/conversations').catch(() => ({ data: { conversations: [] } }))
-      ]);
+      // Add pagination params if provided
+      const params: any = {};
+      if (limit) params.limit = limit;
+      if (page) params.page = page;
 
+      // Fetch agents first - ALWAYS show all agents!
+      const agentsResponse = await api.get<{ agents: BackendAgent[] }>('/agents', { params });
       const agents = agentsResponse.data.agents;
-      const conversations = conversationsResponse.data.conversations || [];
+
+      // Try to fetch today's conversations for stats (but don't block if it fails)
+      let conversations: BackendConversation[] = [];
+      try {
+        const conversationsResponse = await api.get<{ conversations: BackendConversation[] }>('/conversations', {
+          params: { dateFilter: 'today' } // Only today's conversations for fast stats
+        });
+        conversations = conversationsResponse.data.conversations || [];
+        console.log(`Loaded ${conversations.length} conversations for agent stats calculation`);
+      } catch (error) {
+        console.warn('Failed to fetch conversations for stats, showing agents without stats:', error);
+        conversations = [];
+      }
 
       // Calculate stats for each agent
       return agents.map(agent => {
@@ -95,6 +108,8 @@ export const agentService = {
 interface CallRequest {
   agent_id: string;
   to_number: string;
+  language?: 'English' | 'Hindi' | string;  // Language override for agent
+  custom_variables?: Record<string, string | number | boolean>;  // All dynamic variables
 }
 
 interface CallResponse {
@@ -214,10 +229,17 @@ function transformConversation(backendConv: BackendConversation, agentName?: str
 }
 
 export const conversationService = {
-  async getConversations(): Promise<Conversation[]> {
+  async getConversations(dateFilter?: string): Promise<Conversation[]> {
     try {
-      const response = await api.get<{ conversations: BackendConversation[] }>('/conversations');
-      console.log('Conversations response:', response.data);
+      // Add date filter query parameter if provided
+      const params = dateFilter ? { dateFilter } : {};
+      const response = await api.get<{
+        conversations: BackendConversation[];
+        total?: number;
+        filtered?: number;
+      }>('/conversations', { params });
+
+      console.log(`Conversations response: ${response.data.conversations.length} conversations${dateFilter ? ` (filter: ${dateFilter})` : ''}`);
 
       // Backend already includes agent_name in the response, so we can use it directly
       return response.data.conversations.map(conv => transformConversation(conv));
@@ -275,20 +297,21 @@ export const liveCallsService = {
       const activeCalls = response.data.conversations
         .filter(conv => {
           // Use WHITELIST approach: only show calls with truly active statuses
-          // "initiated" status means call was dialed but never connected (should not show as active)
-          // This prevents abandoned/failed calls from showing in Live Calls
+          // "initiated" status is a TRANSITIONAL state - call is being connected, not failed
+          // We must INCLUDE "initiated" to avoid auto-closing calls immediately after answering
           const isActive = conv.status === 'in_progress'
             || conv.status === 'active'
             || conv.status === 'ongoing'
-            || conv.status === 'in-progress';
+            || conv.status === 'in-progress'
+            || conv.status === 'initiated';  // CRITICAL: Include initiated - call is connecting
 
           // For backwards compatibility, also exclude known ended statuses
           const isEnded = conv.status === 'done'
             || conv.status === 'completed'
             || conv.status === 'failed'
             || conv.status === 'cancelled'
-            || conv.status === 'terminated'
-            || conv.status === 'initiated';  // Calls that never connected
+            || conv.status === 'terminated';
+            // REMOVED 'initiated' - it's NOT an ended state, it means call is connecting
 
           // Only show calls that are truly active (not ended, not initiated-only)
           const shouldShow = isActive && !isEnded;
