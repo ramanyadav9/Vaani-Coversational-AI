@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
-import { Phone, Clock, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Phone, Clock, RefreshCw, Wifi, WifiOff, PhoneOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { GlassCard } from '../components/ui/GlassCard';
 import { useLiveCalls } from '../contexts/LiveCallsContext';
+import { liveCallsService } from '../services/api';
 import { formatDuration, maskPhoneNumber } from '../lib/utils';
 import type { LiveCall } from '../types';
 
@@ -142,6 +143,8 @@ function ActiveCallCard({
 }: ActiveCallCardProps) {
   // Real-time duration counter
   const [currentDuration, setCurrentDuration] = useState(call.duration);
+  const [isEnding, setIsEnding] = useState(false);
+  const { refresh } = useLiveCalls();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -151,6 +154,31 @@ function ActiveCallCard({
 
     return () => clearInterval(interval);
   }, [call.startTime]);
+
+  const handleEndCall = async () => {
+    if (!confirm(`Are you sure you want to end the call with ${call.agentName}?`)) {
+      return;
+    }
+
+    setIsEnding(true);
+    try {
+      console.log(`[LiveTab] Ending call: ${call.id}`);
+      const response = await liveCallsService.endCall(call.id);
+
+      if (response.success) {
+        toast.success('Call ended successfully');
+        // Refresh the list to remove the ended call
+        setTimeout(() => refresh(), 1000);
+      } else {
+        toast.error(`Failed to end call: ${response.error || 'Unknown error'}`);
+        setIsEnding(false);
+      }
+    } catch (error: any) {
+      console.error('[LiveTab] Error ending call:', error);
+      toast.error(`Error ending call: ${error.message || 'Unknown error'}`);
+      setIsEnding(false);
+    }
+  };
 
   return (
     <motion.div
@@ -182,7 +210,7 @@ function ActiveCallCard({
             </div>
           </div>
 
-          {/* Right: Duration */}
+          {/* Middle: Duration */}
           <div className="flex items-center gap-3 px-6 py-3 rounded-xl bg-white/5 border border-white/10">
             <Clock className="w-4 h-4 text-white/60" />
             <div className="text-right">
@@ -192,6 +220,30 @@ function ActiveCallCard({
               </p>
             </div>
           </div>
+
+          {/* Right: End Call Button */}
+          <button
+            onClick={handleEndCall}
+            disabled={isEnding}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+              isEnding
+                ? 'bg-red-500/10 text-red-400/50 cursor-not-allowed'
+                : 'bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/50'
+            }`}
+            aria-label={`End call with ${call.agentName}`}
+          >
+            {isEnding ? (
+              <>
+                <div className="w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
+                <span>Ending...</span>
+              </>
+            ) : (
+              <>
+                <PhoneOff className="w-4 h-4" />
+                <span>End Call</span>
+              </>
+            )}
+          </button>
         </div>
       </GlassCard>
     </motion.div>

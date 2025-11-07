@@ -1,15 +1,15 @@
 import { motion } from 'framer-motion';
 import { Bot, History, TrendingUp, Menu } from 'lucide-react';
 import type { TabType } from '../../types';
-import { useState } from 'react';
 
 interface SidebarProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
+  isCollapsed: boolean;
+  setIsCollapsed: (collapsed: boolean) => void;
 }
 
-export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export function Sidebar({ activeTab, onTabChange, isCollapsed, setIsCollapsed }: SidebarProps) {
 
   const tabs = [
     { id: 'agents' as TabType, icon: Bot, label: 'AI Agents' },

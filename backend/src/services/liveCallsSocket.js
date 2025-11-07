@@ -144,8 +144,15 @@ class LiveCallsSocketService {
       const now = Date.now();
       const MAX_CALL_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
+      // Track counts for summary logging
+      let totalChecked = 0;
+      let totalActive = 0;
+      let totalFiltered = 0;
+
       const liveCalls = conversations
         .filter(conv => {
+          totalChecked++;
+
           // Use same whitelist approach as frontend
           const isActive = conv.status === 'in_progress'
             || conv.status === 'active'
@@ -153,21 +160,22 @@ class LiveCallsSocketService {
             || conv.status === 'in-progress'
             || conv.status === 'initiated';  // CRITICAL: Include initiated
 
-          // Exclude ended statuses
+          // Exclude ended statuses - comprehensive list
           const isEnded = conv.status === 'done'
             || conv.status === 'completed'
             || conv.status === 'failed'
             || conv.status === 'cancelled'
-            || conv.status === 'terminated';
+            || conv.status === 'terminated'
+            || conv.status === 'ended'
+            || conv.status === 'disconnected'
+            || conv.status === 'hung_up'
+            || conv.status === 'finished'
+            || conv.status === 'closed';
 
           const shouldShow = isActive && !isEnded;
 
           if (shouldShow) {
-            console.log('WebSocket - Live call found:', {
-              id: conv.conversation_id,
-              status: conv.status,
-              agent: conv.agent_name,
-            });
+            totalActive++;
           }
 
           return shouldShow;
@@ -197,11 +205,14 @@ class LiveCallsSocketService {
         .filter(call => {
           const callAge = now - call.startTime.getTime();
           if (callAge > MAX_CALL_DURATION_MS) {
-            console.log(`WebSocket - Filtering out stale call ${call.id} - active for ${Math.floor(callAge / 1000 / 60)} minutes`);
+            totalFiltered++;
             return false;
           }
           return true;
         });
+
+      // Log summary only (not per-call details)
+      console.log(`📊 WebSocket - Scanned ${totalChecked} conversations: ${totalActive} active, ${totalFiltered} stale filtered, ${liveCalls.length} returned`);
 
       return liveCalls;
     } catch (error) {
@@ -221,7 +232,7 @@ class LiveCallsSocketService {
       return true;
     }
 
-    // Check if any call IDs or statuses changed
+    // Check if any call IDs changed
     const newCallIds = new Set(newCalls.map(c => c.id));
     const prevCallIds = new Set(this.previousLiveCalls.map(c => c.id));
 
@@ -233,6 +244,15 @@ class LiveCallsSocketService {
     for (const id of newCallIds) {
       if (!prevCallIds.has(id)) {
         return true;
+      }
+    }
+
+    // ✅ NEW: Check for status changes in existing calls
+    for (const newCall of newCalls) {
+      const prevCall = this.previousLiveCalls.find(c => c.id === newCall.id);
+      if (prevCall && prevCall.status !== newCall.status) {
+        console.log(`📊 Status changed for call ${newCall.id}: ${prevCall.status} → ${newCall.status}`);
+        return true; // Status changed, broadcast update!
       }
     }
 

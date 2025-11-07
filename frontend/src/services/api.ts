@@ -275,6 +275,17 @@ export const conversationService = {
 
 // Live calls service
 export const liveCallsService = {
+  async endCall(conversationId: string): Promise<CallResponse> {
+    try {
+      console.log(`[Frontend] Ending call: ${conversationId}`);
+      const response = await api.delete<CallResponse>(`/conversations/${conversationId}`);
+      return response.data;
+    } catch (error) {
+      console.error('[Frontend] Error ending call:', error);
+      throw error;
+    }
+  },
+
   async getLiveCalls() {
     try {
       // Get conversations with status 'in_progress' or 'active'

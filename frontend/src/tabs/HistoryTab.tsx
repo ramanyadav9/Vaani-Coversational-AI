@@ -8,7 +8,6 @@ import { Pagination } from '../components/common/Pagination';
 import type { DateFilterType } from '../components/history/HistoryFilters';
 import { conversationService } from '../services/api';
 import { isToday, isYesterday, isWithinLastDays } from '../lib/utils';
-import type { Conversation } from '../types';
 
 export function HistoryTab() {
   // Filter states
@@ -28,7 +27,7 @@ export function HistoryTab() {
   // Initially load TODAY only for fast initial render
   // Load all when user requests via date filter or "Load All" button
   const shouldLoadAll = loadAllConversations || dateFilter === 'all' || dateFilter === 'last7days' || dateFilter === 'last30days';
-  const apiDateFilter = shouldLoadAll ? undefined : (dateFilter !== 'all' ? dateFilter : 'today');
+  const apiDateFilter = shouldLoadAll ? undefined : (dateFilter === 'today' || dateFilter === 'yesterday' ? dateFilter : 'today');
 
   const { data: conversations, isLoading, error, refetch } = useQuery({
     queryKey: ['conversations', apiDateFilter || 'today'], // Normalize undefined to 'today' for cache key consistency

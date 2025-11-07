@@ -201,7 +201,7 @@ function generateAgentDescription(agentName, category) {
 
 export const elevenLabsService = {
   // Helper function for cursor-based pagination through ElevenLabs API
-  async fetchAllWithPagination(endpoint, itemKey = null) {
+  async fetchAllWithPagination(endpoint, itemKey = null, queryParams = {}) {
     let allItems = [];
     let cursor = null;
     const pageSize = 100;
@@ -210,14 +210,15 @@ export const elevenLabsService = {
     try {
       while (true) {
         // Build query parameters
-        const params = { page_size: pageSize };
+        const params = {
+          page_size: pageSize,
+          ...queryParams // Merge additional query parameters (like time filters)
+        };
         if (cursor) {
           params.cursor = cursor;
         }
 
-        console.log(`[PAGINATION] Fetching page ${pageNumber} from ${endpoint}...`);
-
-        // Make API request
+        // Make API request (no per-page logging)
         const response = await axios.get(
           `${config.elevenLabs.baseUrl}${endpoint}`,
           { headers, params }
@@ -239,8 +240,6 @@ export const elevenLabsService = {
           items = pageData.agents || pageData.conversations || pageData.items || [];
         }
 
-        console.log(`[PAGINATION] Page ${pageNumber}: received ${items.length} items (total so far: ${allItems.length + items.length})`);
-
         // Accumulate results
         allItems = allItems.concat(items);
 
@@ -250,7 +249,8 @@ export const elevenLabsService = {
 
         // Break if no more pages
         if (!hasMore || !cursor) {
-          console.log(`[PAGINATION] Completed: fetched ${allItems.length} total items across ${pageNumber} page(s)`);
+          // Only log summary at the end
+          console.log(`[PAGINATION] Fetched ${allItems.length} items from ${endpoint} (${pageNumber} page${pageNumber > 1 ? 's' : ''})`);
           break;
         }
 
@@ -322,18 +322,13 @@ export const elevenLabsService = {
   // Get all agents with categories and enhanced details
   async getAgents() {
     try {
-      console.log('\n[AGENT ANALYSIS] Starting agent fetch with pagination...');
-
       // Fetch all agents using pagination
       const agents = await this.fetchAllWithPagination('/v1/convai/agents', 'agents');
-
-      console.log(`\n[AGENT ANALYSIS] Found ${agents.length} total agents from ElevenLabs`);
 
       // Add enhanced details to agents
       const enhancedAgents = await Promise.all(agents.map(async agent => {
         // Use intelligent category determination
         const category = determineAgentCategory(agent.name);
-        console.log(`[AGENT ANALYSIS] Agent: "${agent.name}" -> Category: "${category}"`);
 
         // Get voice ID from agent configuration
         const voiceId = agent.conversation_config?.agent?.first_message?.voice_id
@@ -386,12 +381,7 @@ export const elevenLabsService = {
         // If no good description from prompt, generate intelligent one
         if (!description) {
           description = generateAgentDescription(agent.name, category);
-          console.log(`[AGENT ANALYSIS] Generated description: "${description}"`);
-        } else {
-          console.log(`[AGENT ANALYSIS] Using prompt description: "${description}"`);
         }
-
-        console.log(`[AGENT ANALYSIS] Agent "${agent.name}": voice=${voiceId}, gender=${voiceGender}, lang=${voiceLanguage}, category=${category}`);
 
         return {
           ...agent,
@@ -402,7 +392,7 @@ export const elevenLabsService = {
         };
       }));
 
-      console.log(`[AGENT ANALYSIS] Successfully processed ${enhancedAgents.length} agents\n`);
+      console.log(`[AGENTS] Processed ${enhancedAgents.length} agents successfully`);
       return { success: true, agents: enhancedAgents };
     } catch (error) {
       console.error('Error fetching agents:', error.message);
@@ -476,6 +466,19 @@ export const elevenLabsService = {
           dynamic_variables: sessionConfig.dynamicVariables || {},
         };
 
+        // Debug: Check for opening_message
+        if (sessionConfig.dynamicVariables) {
+          console.log('[OPENING_MESSAGE DEBUG] Dynamic variables:', Object.keys(sessionConfig.dynamicVariables));
+          if (sessionConfig.dynamicVariables.opening_message) {
+            console.log('[OPENING_MESSAGE DEBUG] ✅ opening_message is set to:', sessionConfig.dynamicVariables.opening_message);
+          } else {
+            console.log('[OPENING_MESSAGE DEBUG] ⚠️ opening_message is MISSING! This may cause call disconnection for banking agents.');
+          }
+          if (sessionConfig.dynamicVariables.session_configcustomer_name) {
+            console.log('[OPENING_MESSAGE DEBUG] Customer name:', sessionConfig.dynamicVariables.session_configcustomer_name);
+          }
+        }
+
         // Add user_id if provided
         if (sessionConfig.userId) {
           payload.conversation_initiation_client_data.user_id = sessionConfig.userId;
@@ -523,14 +526,20 @@ export const elevenLabsService = {
   },
 
   // Get conversation history
-  async getConversations() {
+  async getConversations(hoursBack = 48) {
     try {
-      console.log('\n[CONVERSATIONS] Starting conversation fetch with pagination...');
+      // Calculate time filter - only fetch recent conversations to reduce API load
+      const timeFilterUnix = Math.floor(Date.now() / 1000) - (hoursBack * 60 * 60);
 
-      // Fetch all conversations using pagination
-      const conversations = await this.fetchAllWithPagination('/v1/convai/conversations', 'conversations');
+      // Fetch conversations using pagination with time filter
+      const conversations = await this.fetchAllWithPagination(
+        '/v1/convai/conversations',
+        'conversations',
+        { start_time_unix_secs: timeFilterUnix }
+      );
 
-      console.log(`[CONVERSATIONS] Successfully fetched ${conversations.length} total conversations\n`);
+      // Log summary only (no verbose details)
+      console.log(`[CONVERSATIONS] Fetched ${conversations.length} conversations from last ${hoursBack}h`);
 
       return { success: true, conversations };
     } catch (error) {
@@ -568,5 +577,33 @@ export const elevenLabsService = {
       phone_number: config.elevenLabs.phoneNumber,
       phone_number_id: config.elevenLabs.phoneNumberId,
     };
+  },
+
+  // End/terminate a conversation
+  async endConversation(conversationId) {
+    try {
+      console.log(`\n[END CALL] Attempting to terminate conversation: ${conversationId}`);
+
+      const response = await axios.delete(
+        `${config.elevenLabs.baseUrl}/v1/convai/conversations/${conversationId}`,
+        { headers }
+      );
+
+      console.log(`[END CALL] ✅ Conversation ${conversationId} terminated successfully`);
+      console.log('[END CALL] Response:', response.data);
+
+      return {
+        success: true,
+        message: 'Conversation terminated successfully',
+        data: response.data,
+      };
+    } catch (error) {
+      console.error('[END CALL] ❌ Error terminating conversation:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: 'Failed to terminate conversation',
+        details: error.response?.data || error.message,
+      };
+    }
   },
 };

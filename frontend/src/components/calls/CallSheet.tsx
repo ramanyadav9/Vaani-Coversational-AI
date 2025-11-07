@@ -1,13 +1,14 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Phone } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { CallSheetProps } from '../../types';
 import { CallProgressAnimation } from './CallProgressAnimation';
-import { formatPhoneNumber } from '../../lib/utils';
 import { callService, liveCallsService } from '../../services/api';
-import agentVariablesData from '../../agent-variables.json';
+import agentFeaturesData from '../../agent-features-complete.json';
+import type { AgentVariables } from '../../types';
+import { DynamicCallForm } from './DynamicCallForm';
 
 export function CallSheet({ isOpen, onClose, agent }: CallSheetProps) {
   const queryClient = useQueryClient();
@@ -15,11 +16,11 @@ export function CallSheet({ isOpen, onClose, agent }: CallSheetProps) {
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'connected' | 'ended'>('idle');
   const [error, setError] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [language, setLanguage] = useState<'English' | 'Hindi'>('English');
+  const [autoGenerateOpening, setAutoGenerateOpening] = useState(true);
 
-  // Find agent's variable requirements from scan data
+  // Find agent's variable requirements from enhanced scan data
   const agentVariables = agent
-    ? agentVariablesData.agents.find((a: any) => a.agent_id === agent.id)
+    ? (agentFeaturesData.agents.find((a: any) => a.agent_id === agent.id) as AgentVariables | undefined)
     : null;
 
   // Dynamic custom variables state (one field per variable)
@@ -37,9 +38,6 @@ export function CallSheet({ isOpen, onClose, agent }: CallSheetProps) {
       setCustomVariables({});
     }
   }, [agent?.id]);
-
-  // Helper to check if agent has variables
-  const hasVariables = agentVariables && Object.keys(agentVariables.variables || {}).length > 0;
 
   // Mutation for initiating call
   const initiateCallMutation = useMutation({
@@ -89,17 +87,31 @@ export function CallSheet({ isOpen, onClose, agent }: CallSheetProps) {
       return;
     }
 
-    // Check for required variables
-    if (agentVariables?.required_variables) {
-      const missingRequired = agentVariables.required_variables.filter(
-        (varName: string) => !customVariables[varName] || customVariables[varName].trim() === ''
-      );
+    // Check for required variables (classification-based)
+    if (agentVariables?.variables) {
+      const missingRequired = Object.entries(agentVariables.variables)
+        .filter(([varName, varMeta]: [string, any]) => {
+          // Skip opening_message validation when auto-generate is ON
+          if (autoGenerateOpening && varName === 'opening_message') {
+            return false;
+          }
+          return varMeta.classification === 'user_input_required';
+        })
+        .filter(([varName]) => !customVariables[varName] || customVariables[varName].trim() === '')
+        .map(([_, varMeta]: [string, any]) => varMeta.label);
 
       if (missingRequired.length > 0) {
-        setError(`Please fill in required fields: ${missingRequired.map((v: string) =>
-          (agentVariables.variables as Record<string, any>)[v]?.label || v
-        ).join(', ')}`);
+        setError(`Please fill in required fields: ${missingRequired.join(', ')}`);
         return;
+      }
+
+      // If agent has opening_message variable and auto-generate is ON, ensure customer name is provided
+      if (autoGenerateOpening && agentVariables.variables.opening_message) {
+        const customerName = customVariables.session_configcustomer_name;
+        if (!customerName || customerName.trim() === '') {
+          setError('Please provide customer name (required for opening message)');
+          return;
+        }
       }
     }
 
@@ -110,7 +122,6 @@ export function CallSheet({ isOpen, onClose, agent }: CallSheetProps) {
     const callPayload: any = {
       agent_id: agent.id,
       to_number: cleanNumber,
-      language: language,
     };
 
     // Add custom variables if any are provided
@@ -137,13 +148,9 @@ export function CallSheet({ isOpen, onClose, agent }: CallSheetProps) {
     initiateCallMutation.mutate(callPayload);
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    // Allow up to 15 digits for international numbers
-    if (value.length <= 15) {
-      setPhoneNumber(value);
-      setError('');
-    }
+  const handlePhoneChange = (value: string) => {
+    setPhoneNumber(value);
+    setError('');
   };
 
   const handleClose = () => {
@@ -152,7 +159,6 @@ export function CallSheet({ isOpen, onClose, agent }: CallSheetProps) {
     setCallStatus('idle');
     setError('');
     setConversationId(null);
-    setLanguage('English');
     setCustomVariables({});
     onClose();
   };
@@ -266,165 +272,35 @@ export function CallSheet({ isOpen, onClose, agent }: CallSheetProps) {
                 </div>
               )}
 
-              {/* Phone Input */}
-              {callStatus === 'idle' && (
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-white/80 mb-2">
-                    Phone Number *
-                  </label>
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={formatPhoneNumber(phoneNumber)}
-                    onChange={handlePhoneChange}
-                    placeholder="(555) 123-4567"
-                    className={`w-full px-4 py-3 input-glass ${
-                      error ? 'border-red-500 shake' : ''
-                    }`}
-                    aria-invalid={!!error}
-                    aria-describedby={error ? 'phone-error' : undefined}
-                  />
-                  {error && (
-                    <p id="phone-error" className="mt-2 text-sm text-red-400" role="alert">
-                      {error}
-                    </p>
-                  )}
-                </div>
+              {/* Dynamic Call Form - Uses shared component */}
+              {callStatus === 'idle' && agent && (
+                <DynamicCallForm
+                  agent={agent}
+                  agentVariables={agentVariables || null}
+                  phoneNumber={phoneNumber}
+                  onPhoneChange={handlePhoneChange}
+                  customVariables={customVariables}
+                  onCustomVariablesChange={setCustomVariables}
+                  onSubmit={handleCall}
+                  onCancel={handleClose}
+                  error={error}
+                  isSubmitting={initiateCallMutation.isPending}
+                  autoGenerateOpening={autoGenerateOpening}
+                  onAutoGenerateOpeningChange={setAutoGenerateOpening}
+                />
               )}
 
-              {/* Language Selection (Always shown) */}
-              {callStatus === 'idle' && (
-                <div className="space-y-4 border-t border-white/10 pt-4">
-                  <div>
-                    <label htmlFor="language" className="block text-sm font-medium text-white/60 mb-2">
-                      Language
-                    </label>
-                    <select
-                      id="language"
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value as 'English' | 'Hindi')}
-                      className="w-full px-4 py-2.5 input-glass text-sm"
-                    >
-                      <option value="English">English</option>
-                      <option value="Hindi">Hindi</option>
-                    </select>
-                    <p className="text-xs text-white/40 mt-1">Agent will use its configured voice for this language</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Dynamic Variables Form (Agent-specific) */}
-              {callStatus === 'idle' && hasVariables && (
-                <div className="space-y-4 border-t border-white/10 pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium text-white/80">
-                      {agentVariables?.category === 'Banking' ? 'Banking Details' : 'Additional Information'}
-                    </h3>
-                    {agentVariables?.required_variables && agentVariables.required_variables.length > 0 && (
-                      <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full">
-                        {agentVariables.required_variables.length} required
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Dynamically render fields based on agent variables */}
-                  {agentVariables && Object.entries(agentVariables.variables).map(([varName, varMeta]: [string, any]) => {
-                    const isRequired = varMeta.required;
-                    const fieldType = varMeta.fieldType;
-
-                    return (
-                      <div key={varName}>
-                        <label
-                          htmlFor={varName}
-                          className="block text-sm font-medium text-white/60 mb-2"
-                        >
-                          {varMeta.label}
-                          {isRequired && <span className="text-red-400 ml-1">*</span>}
-                        </label>
-                        {fieldType === 'textarea' ? (
-                          <textarea
-                            id={varName}
-                            value={customVariables[varName] || ''}
-                            onChange={(e) => setCustomVariables({
-                              ...customVariables,
-                              [varName]: e.target.value
-                            })}
-                            placeholder={varMeta.placeholder}
-                            rows={3}
-                            className="w-full px-4 py-2.5 input-glass text-sm resize-none"
-                            required={isRequired}
-                          />
-                        ) : (
-                          <input
-                            id={varName}
-                            type={fieldType}
-                            value={customVariables[varName] || ''}
-                            onChange={(e) => setCustomVariables({
-                              ...customVariables,
-                              [varName]: e.target.value
-                            })}
-                            placeholder={varMeta.placeholder}
-                            className="w-full px-4 py-2.5 input-glass text-sm"
-                            required={isRequired}
-                          />
-                        )}
-                        {varMeta.source && (
-                          <p className="text-xs text-white/30 mt-1">
-                            Used in: {varMeta.source.join(', ')}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* No Variables Message */}
-              {callStatus === 'idle' && !hasVariables && (
-                <div className="text-center py-4 border-t border-white/10">
-                  <p className="text-sm text-white/40">
-                    This agent doesn't require additional information
-                  </p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                {callStatus === 'idle' ? (
-                  <>
-                    <button
-                      onClick={handleClose}
-                      className="flex-1 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all duration-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleCall}
-                      disabled={initiateCallMutation.isPending}
-                      className="flex-1 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {initiateCallMutation.isPending ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Calling...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Phone className="w-4 h-4" />
-                          <span>Call Now</span>
-                        </>
-                      )}
-                    </button>
-                  </>
-                ) : (
+              {/* Close button for active calls */}
+              {callStatus !== 'idle' && (
+                <div className="flex gap-3">
                   <button
                     onClick={handleClose}
                     className="w-full px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all duration-200"
                   >
                     Close
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             </motion.div>
           </div>

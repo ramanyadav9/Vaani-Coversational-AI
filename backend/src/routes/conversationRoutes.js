@@ -9,4 +9,7 @@ router.get('/', conversationController.getConversations);
 // GET /api/conversations/:conversation_id - Get specific conversation
 router.get('/:conversation_id', conversationController.getConversationById);
 
+// DELETE /api/conversations/:conversation_id - End/terminate conversation
+router.delete('/:conversation_id', conversationController.endConversation);
+
 export default router;

@@ -6,8 +6,17 @@ export const conversationController = {
     try {
       const { dateFilter, startDate, endDate } = req.query;
 
-      // Fetch all conversations from ElevenLabs
-      const result = await elevenLabsService.getConversations();
+      // Determine how many hours of data to fetch based on filter
+      let hoursToFetch = 48; // Default: 2 days
+      if (dateFilter === 'last7days' || dateFilter === 'last30days') {
+        hoursToFetch = dateFilter === 'last7days' ? 168 : 720; // 7 days or 30 days
+      } else if (startDate || endDate) {
+        // For custom ranges, fetch 30 days to be safe
+        hoursToFetch = 720;
+      }
+
+      // Fetch conversations from ElevenLabs with time filter
+      const result = await elevenLabsService.getConversations(hoursToFetch);
 
       if (!result.success) {
         return res.status(500).json({
@@ -87,6 +96,35 @@ export const conversationController = {
       res.status(500).json({
         error: result.error,
         details: result.details,
+      });
+    }
+  },
+
+  // End/terminate a conversation
+  async endConversation(req, res) {
+    try {
+      const { conversation_id } = req.params;
+
+      if (!conversation_id) {
+        return res.status(400).json({
+          error: 'conversation_id is required',
+        });
+      }
+
+      console.log(`[Controller] Received request to end conversation: ${conversation_id}`);
+
+      const result = await elevenLabsService.endConversation(conversation_id);
+
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(500).json(result);
+      }
+    } catch (error) {
+      console.error('[Controller] Error in endConversation:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        details: error.message,
       });
     }
   },

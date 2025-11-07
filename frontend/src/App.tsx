@@ -30,6 +30,7 @@ function TabSkeleton() {
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabType>('agents');
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <SearchProvider>
@@ -44,10 +45,17 @@ function App() {
         {/* Main Layout */}
         <div className="flex">
           {/* Sidebar */}
-          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <Sidebar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+          />
 
           {/* Main Content */}
-          <main className="flex-1 p-6 pb-32 sm:pb-28 sm:ml-60 pt-6">
+          <main className={`flex-1 p-6 pb-32 sm:pb-28 transition-all duration-300 ${
+            isCollapsed ? 'sm:ml-16' : 'sm:ml-60'
+          } pt-6`}>
             <div className="max-w-screen-2xl mx-auto">
               <AnimatePresence mode="wait">
                 <motion.div

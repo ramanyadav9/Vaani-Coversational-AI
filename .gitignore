@@ -131,3 +131,57 @@ coverage/
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.ts
+*.test.tsx
+*.test.js
+*.test.jsx
+*.spec.ts
+*.spec.tsx
+*.spec.js
+*.spec.jsx
+**/*.test.*
+**/*.spec.*
+
+# Documentation (context maps, analysis files, etc.)
+docs/
+documentation/
+**/docs/
+*.backup
+*.bak
+*-analysis.md
+*-context-map.md
+context-map-*.md
+agent-data-flow-*.md
+*-issue-summary.md
+
+# Agent configuration files (sensitive/local data)
+agent-features-complete.json
+agent-features-complete.json.backup
+agent-variables.json
+**/agent-features-complete.json
+**/agent-variables.json
+
+# Temporary scripts and utilities
+docs/*.js
+docs/*.cjs
+docs/*.mjs
+**/scan-*.js
+**/update-*.js
+**/update-*.cjs
+
+# Analysis and debugging files
+/tmp/
+*.debug
+*.trace
+debug-*.json
+trace-*.json
+
+# Local configuration overrides
+config.local.json
+settings.local.json
+
