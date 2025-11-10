@@ -164,10 +164,9 @@ agent-data-flow-*.md
 *-issue-summary.md
 
 # Agent configuration files (sensitive/local data)
-agent-features-complete.json
 agent-features-complete.json.backup
 agent-variables.json
-**/agent-features-complete.json
+
 **/agent-variables.json
 
 # Temporary scripts and utilities

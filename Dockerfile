@@ -108,8 +108,7 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo 'PORT=3000 node src/server.js &' >> /start.sh && \
     echo '' >> /start.sh && \
     echo '# Start nginx to serve frontend and proxy API requests' >> /start.sh && \
-    echo 'nginx -g "daemon off;"' >> /start.sh && \
-    chmod +x /start.sh
+    echo 'nginx -g "daemon off;"' >> /start.sh
 
 RUN chmod +x /start.sh
 
