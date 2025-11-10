@@ -4,6 +4,8 @@
 .qwen/
 !.qwen/README.md
 
+docs/
+
 # Markdown files (except README and DEPLOYMENT)
 *.md
 !README.md
