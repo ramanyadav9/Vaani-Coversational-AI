@@ -31,7 +31,6 @@ export const extractVoiceVariant = (agentName: string): { language: string; gend
 
   // Language patterns
   const languages = ['english', 'hindi', 'british'];
-  const genders: ('male' | 'female')[] = ['male', 'female'];
 
   let language: string | null = null;
   let gender: 'male' | 'female' = 'male'; // Default
