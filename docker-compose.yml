@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  conversational-ai:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3000
+      - API_KEY=${API_KEY}
+      - BASE_URL=${BASE_URL}
+      - YOUR_PHONE_NUMBER_ID=${YOUR_PHONE_NUMBER_ID}
+      - YOUR_PHONE_NUMBER=${YOUR_PHONE_NUMBER}
+    volumes:
+      - ./logs:/app/backend/logs  # Optional: for log persistence
+    restart: unless-stopped
+    networks:
+      - ai_network
+
+networks:
+  ai_network:
+    driver: bridge

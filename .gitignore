@@ -1,6 +1,8 @@
 # Claude AI reference files
 .claude/
 !.claude/README.md
+.qwen/
+!.qwen/README.md
 
 # Markdown files (except README and DEPLOYMENT)
 *.md
