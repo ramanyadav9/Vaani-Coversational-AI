@@ -22,8 +22,8 @@ COPY frontend/ ./
 COPY frontend/.env.production .env
 
 # Temporarily modify TypeScript configuration to disable unused variable checking
-RUN sed -i 's/"noUnusedLocals": true/"noUnusedLocals": false/g' ./frontend/tsconfig.app.json && \
-    sed -i 's/"noUnusedParameters": true/"noUnusedParameters": false/g' ./frontend/tsconfig.app.json
+RUN sed -i 's/"noUnusedLocals": true/"noUnusedLocals": false/g' ./tsconfig.app.json && \
+    sed -i 's/"noUnusedParameters": true/"noUnusedParameters": false/g' ./tsconfig.app.json
 
 # Build the frontend with environment variables
 RUN npm run build
@@ -63,47 +63,57 @@ RUN rm -rf /etc/nginx/conf.d/default.conf
 RUN mkdir -p /usr/share/nginx/html
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
 
-# Create custom nginx config to serve frontend and proxy API requests to backend
-RUN echo "server {" > /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    listen 3001;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    server_name localhost;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    # Serve static files from the React build" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    location / {" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        root /usr/share/nginx/html;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        index index.html;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        try_files \$uri \$uri/ /index.html;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    }" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    # Proxy API requests to the backend server" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    location /api/ {" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_pass http://127.0.0.1:3000/;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_http_version 1.1;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header Upgrade \$http_upgrade;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header Connection 'upgrade';" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header Host \$host;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header X-Real-IP \$remote_addr;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header X-Forwarded-Proto \$scheme;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    }" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    # Proxy WebSocket connections to the backend server" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    location /socket.io/ {" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_pass http://127.0.0.1:3000/socket.io/;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_http_version 1.1;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header Upgrade \$http_upgrade;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header Connection 'upgrade';" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header Host \$host;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header X-Real-IP \$remote_addr;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_set_header X-Forwarded-Proto \$scheme;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    }" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    # Health check endpoint" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    location /health {" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "        proxy_pass http://127.0.0.1:3000/health;" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "    }" >> /etc/nginx/conf.d/conversational-ai.conf && \
-    echo "}" >> /etc/nginx/conf.d/conversational-ai.conf
+# Create a complete nginx configuration file
+RUN echo "events {" > /etc/nginx/nginx.conf && \
+    echo "    worker_connections 1024;" >> /etc/nginx/nginx.conf && \
+    echo "}" >> /etc/nginx/nginx.conf && \
+    echo "" >> /etc/nginx/nginx.conf && \
+    echo "http {" >> /etc/nginx/nginx.conf && \
+    echo "    include /etc/nginx/mime.types;" >> /etc/nginx/nginx.conf && \
+    echo "    default_type application/octet-stream;" >> /etc/nginx/nginx.conf && \
+    echo "" >> /etc/nginx/nginx.conf && \
+    echo "    # Server configuration" >> /etc/nginx/nginx.conf && \
+    echo "    server {" >> /etc/nginx/nginx.conf && \
+    echo "        listen 3001;" >> /etc/nginx/nginx.conf && \
+    echo "        server_name localhost;" >> /etc/nginx/nginx.conf && \
+    echo "" >> /etc/nginx/nginx.conf && \
+    echo "        # Serve static files from the React build" >> /etc/nginx/nginx.conf && \
+    echo "        location / {" >> /etc/nginx/nginx.conf && \
+    echo "            root /usr/share/nginx/html;" >> /etc/nginx/nginx.conf && \
+    echo "            index index.html;" >> /etc/nginx/nginx.conf && \
+    echo "            try_files \$uri \$uri/ /index.html;" >> /etc/nginx/nginx.conf && \
+    echo "        }" >> /etc/nginx/nginx.conf && \
+    echo "" >> /etc/nginx/nginx.conf && \
+    echo "        # Proxy API requests to the backend server" >> /etc/nginx/nginx.conf && \
+    echo "        location /api/ {" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_pass http://127.0.0.1:3000/;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_http_version 1.1;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header Upgrade \$http_upgrade;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header Connection 'upgrade';" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header Host \$host;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header X-Real-IP \$remote_addr;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header X-Forwarded-Proto \$scheme;" >> /etc/nginx/nginx.conf && \
+    echo "        }" >> /etc/nginx/nginx.conf && \
+    echo "" >> /etc/nginx/nginx.conf && \
+    echo "        # Proxy WebSocket connections to the backend server" >> /etc/nginx/nginx.conf && \
+    echo "        location /socket.io/ {" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_pass http://127.0.0.1:3000/socket.io/;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_http_version 1.1;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header Upgrade \$http_upgrade;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header Connection 'upgrade';" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header Host \$host;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header X-Real-IP \$remote_addr;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_set_header X-Forwarded-Proto \$scheme;" >> /etc/nginx/nginx.conf && \
+    echo "        }" >> /etc/nginx/nginx.conf && \
+    echo "" >> /etc/nginx/nginx.conf && \
+    echo "        # Health check endpoint" >> /etc/nginx/nginx.conf && \
+    echo "        location /health {" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_pass http://127.0.0.1:3000/health;" >> /etc/nginx/nginx.conf && \
+    echo "        }" >> /etc/nginx/nginx.conf && \
+    echo "    }" >> /etc/nginx/nginx.conf && \
+    echo "}" >> /etc/nginx/nginx.conf
 
 # Create a startup script
 RUN echo '#!/bin/sh' > /start.sh && \

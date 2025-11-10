@@ -47,13 +47,13 @@ app.use(errorHandler);
 liveCallsSocketService.initialize(io);
 
 // Start server
-httpServer.listen(config.port, () => {
+httpServer.listen(config.port, '0.0.0.0', () => {
   console.log(`
 ╔════════════════════════════════════════════╗
 ║  🤖 Conversational AI Backend Server      ║
 ║                                            ║
-║  📡 Server: http://localhost:${config.port}         ║
-║  🔌 WebSocket: ws://localhost:${config.port}        ║
+║  📡 Server: http://0.0.0.0:${config.port}           ║
+║  🔌 WebSocket: ws://0.0.0.0:${config.port}          ║
 ║  📞 Phone: ${config.elevenLabs.phoneNumber}                  ║
 ║  🆔 Phone ID: ${config.elevenLabs.phoneNumberId.substring(0, 20)}... ║
 ║                                            ║
