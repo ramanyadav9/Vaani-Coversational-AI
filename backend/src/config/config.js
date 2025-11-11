@@ -22,8 +22,8 @@ export const config = {
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
         'http://127.0.0.1:5175',
-        'http://localhost:3001',  // Add the new Docker port
-        'http://192.168.1.188:3001',  // Add the server IP with port
+        'http://localhost:3001',  // Add the new Docker port for frontend
+        'http://192.168.1.188:3001',  // Add the server IP with port for frontend
         'http://192.168.1.188'  // Add just the server IP
       ];
 

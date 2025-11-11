@@ -47,8 +47,8 @@ RUN npm install
 # Stage 3: Production server with nginx to serve both frontend and backend
 FROM node:20-alpine
 
-# Install nginx
-RUN apk add --no-cache nginx
+# Install nginx and netcat (for health check in startup script)
+RUN apk add --no-cache nginx netcat-openbsd
 
 # Create app directory
 WORKDIR /app
@@ -72,6 +72,11 @@ RUN echo "events {" > /etc/nginx/nginx.conf && \
     echo "    include /etc/nginx/mime.types;" >> /etc/nginx/nginx.conf && \
     echo "    default_type application/octet-stream;" >> /etc/nginx/nginx.conf && \
     echo "" >> /etc/nginx/nginx.conf && \
+    echo "    # Upstream definition for backend" >> /etc/nginx/nginx.conf && \
+    echo "    upstream backend {" >> /etc/nginx/nginx.conf && \
+    echo "        server 127.0.0.1:3000;" >> /etc/nginx/nginx.conf && \
+    echo "    }" >> /etc/nginx/nginx.conf && \
+    echo "" >> /etc/nginx/nginx.conf && \
     echo "    # Server configuration" >> /etc/nginx/nginx.conf && \
     echo "    server {" >> /etc/nginx/nginx.conf && \
     echo "        listen 3001;" >> /etc/nginx/nginx.conf && \
@@ -86,7 +91,7 @@ RUN echo "events {" > /etc/nginx/nginx.conf && \
     echo "" >> /etc/nginx/nginx.conf && \
     echo "        # Proxy API requests to the backend server" >> /etc/nginx/nginx.conf && \
     echo "        location /api/ {" >> /etc/nginx/nginx.conf && \
-    echo "            proxy_pass http://127.0.0.1:3000/;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_pass http://backend;" >> /etc/nginx/nginx.conf && \
     echo "            proxy_http_version 1.1;" >> /etc/nginx/nginx.conf && \
     echo "            proxy_set_header Upgrade \$http_upgrade;" >> /etc/nginx/nginx.conf && \
     echo "            proxy_set_header Connection 'upgrade';" >> /etc/nginx/nginx.conf && \
@@ -98,7 +103,7 @@ RUN echo "events {" > /etc/nginx/nginx.conf && \
     echo "" >> /etc/nginx/nginx.conf && \
     echo "        # Proxy WebSocket connections to the backend server" >> /etc/nginx/nginx.conf && \
     echo "        location /socket.io/ {" >> /etc/nginx/nginx.conf && \
-    echo "            proxy_pass http://127.0.0.1:3000/socket.io/;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_pass http://backend/socket.io/;" >> /etc/nginx/nginx.conf && \
     echo "            proxy_http_version 1.1;" >> /etc/nginx/nginx.conf && \
     echo "            proxy_set_header Upgrade \$http_upgrade;" >> /etc/nginx/nginx.conf && \
     echo "            proxy_set_header Connection 'upgrade';" >> /etc/nginx/nginx.conf && \
@@ -110,7 +115,7 @@ RUN echo "events {" > /etc/nginx/nginx.conf && \
     echo "" >> /etc/nginx/nginx.conf && \
     echo "        # Health check endpoint" >> /etc/nginx/nginx.conf && \
     echo "        location /health {" >> /etc/nginx/nginx.conf && \
-    echo "            proxy_pass http://127.0.0.1:3000/health;" >> /etc/nginx/nginx.conf && \
+    echo "            proxy_pass http://backend/health;" >> /etc/nginx/nginx.conf && \
     echo "        }" >> /etc/nginx/nginx.conf && \
     echo "    }" >> /etc/nginx/nginx.conf && \
     echo "}" >> /etc/nginx/nginx.conf
@@ -120,6 +125,18 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo '# Start backend server in background' >> /start.sh && \
     echo 'cd /app/backend' >> /start.sh && \
     echo 'PORT=3000 node src/server.js &' >> /start.sh && \
+    echo 'BACKEND_PID=$!' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# Wait for backend to be ready' >> /start.sh && \
+    echo 'echo "Waiting for backend server to start..."' >> /start.sh && \
+    echo 'for i in $(seq 1 30); do' >> /start.sh && \
+    echo '  if nc -z localhost 3000; then' >> /start.sh && \
+    echo '    echo "Backend server is ready"' >> /start.sh && \
+    echo '    break' >> /start.sh && \
+    echo '  fi' >> /start.sh && \
+    echo '  echo "Waiting for backend... ($i/30)"' >> /start.sh && \
+    echo '  sleep 1' >> /start.sh && \
+    echo 'done' >> /start.sh && \
     echo '' >> /start.sh && \
     echo '# Start nginx to serve frontend and proxy API requests' >> /start.sh && \
     echo 'nginx -g "daemon off;"' >> /start.sh
