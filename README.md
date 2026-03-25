@@ -147,10 +147,4 @@ The frontend connects to the Express backend at `http://localhost:3000` with the
 - Firefox: Latest 2 versions
 - Safari: Latest 2 versions
 
-## License
 
-ISC
-
-## Author
-
-Built with Claude Code
